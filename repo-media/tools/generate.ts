@@ -15,6 +15,7 @@ import {
   DEFAULT_ASPECT_RATIOS,
 } from "../providers/types.js";
 import { mkdir, writeFile } from "node:fs/promises";
+import { slugify, timestamp, pad, sleep } from "../utils.js";
 import { resolve, dirname } from "node:path";
 import { getDefaultModel } from "../wizard.js";
 
@@ -366,35 +367,5 @@ function inferCapabilityFromModel(model: string): Capability {
   if (model.includes("image")) return "image";
   throw new Error(
     `Cannot infer capability from model "${model}". Specify a known model or use a non-custom asset_type.`
-  );
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function timestamp(): string {
-  const now = new Date();
-  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-}
-
-function pad(n: number): string {
-  return n.toString().padStart(2, "0");
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new Error("Cancelled"));
-      },
-      { once: true }
-    );
-  });
+  )
 }

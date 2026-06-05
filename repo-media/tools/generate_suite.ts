@@ -16,6 +16,7 @@ import {
 } from "../providers/types.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
+import { slugify, sleep } from "../utils.js";
 import { getDefaultModel } from "../wizard.js";
 
 const ASSET_TYPE_ENUM = [
@@ -354,28 +355,5 @@ export function registerGenerateSuiteTool(
         },
       };
     },
-  });
-}
-
-// --- Helpers (shared with generate.ts — could extract to utils.ts) ---
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new Error("Cancelled"));
-      },
-      { once: true }
-    );
   });
 }
