@@ -109,69 +109,51 @@ async function handleModels(
   providers: MediaProvider[],
   args: string[]
 ) {
-  const capability = args[0] as Capability | undefined;
   const capabilities: Capability[] = ["image", "speech", "music", "video"];
 
-  if (!capability || !capabilities.includes(capability)) {
-    // Show current defaults + available models
-    const defaults = await loadModelDefaults();
-    const lines: string[] = ["🎬 Media Model Defaults\n"];
+  // Step 1: Pick which capability to configure
+  const defaults = await loadModelDefaults();
 
-    for (const cap of capabilities) {
-      const defaultModel =
-        defaults[cap] ?? DEFAULT_MODELS[cap] ?? "unknown";
-      const provider = providers.find((p) => p.capabilities.includes(cap));
-      const models = getModelList(provider, cap);
+  // Build display labels showing current defaults
+  const capLabels = capabilities.map((cap) => {
+    const currentDefault = defaults[cap] ?? DEFAULT_MODELS[cap] ?? "—";
+    return `${cap.padEnd(7)} — default: ${currentDefault}`;
+  });
 
-      lines.push(`${cap.toUpperCase()}:`);
-      lines.push(`  Default: ${defaultModel}`);
-      lines.push(`  Available: ${models.join(", ")}`);
-      lines.push("");
-    }
+  const selectedCap = await ctx.ui.select(
+    "Which capability to configure?",
+    capLabels
+  );
+  if (!selectedCap) return;
 
-    lines.push(
-      "Set a default: /media models <image|speech|music|video> <model>"
-    );
-    lines.push("Example: /media models speech speech-2.8-turbo");
+  // Extract capability name from selection
+  const capability = capabilities.find((cap) =>
+    selectedCap.startsWith(cap)
+  )! as Capability;
 
-    ctx.ui.notify(lines.join("\n"), "info");
-    return;
-  }
-
-  // Setting a default
-  const requestedModel = args[1];
+  // Step 2: Show model picker for that capability
   const provider = providers.find((p) =>
     p.capabilities.includes(capability)
   );
+  const models = getModelList(provider, capability);
+  const currentDefault = defaults[capability] ?? DEFAULT_MODELS[capability] ?? models[0];
 
-  if (!provider) {
-    ctx.ui.notify(`No provider available for ${capability}`, "error");
+  if (models.length === 0) {
+    ctx.ui.notify(`No models available for ${capability}`, "error");
     return;
   }
 
-  const available = getModelList(provider, capability);
+  const choice = await ctx.ui.select(
+    `Select default ${capability} model:`,
+    models.map((m) =>
+      m === currentDefault ? `${m}  ✓ (current)` : m
+    )
+  );
+  if (!choice) return;
 
-  if (!requestedModel) {
-    // Interactive: show picker
-    const currentDefault = await getDefaultModel(capability);
-    const choice = await ctx.ui.select(
-      `Select default ${capability} model:`,
-      available.map((m) => ({
-        value: m,
-        label: m === currentDefault ? `${m} (current)` : m,
-      }))
-    );
-    if (!choice) return;
-    requestedModel as string;
-    await setDefaultModel(ctx, capability, choice as string);
-  } else if (available.includes(requestedModel)) {
-    await setDefaultModel(ctx, capability, requestedModel);
-  } else {
-    ctx.ui.notify(
-      `Unknown model "${requestedModel}". Available: ${available.join(", ")}`,
-      "error"
-    );
-  }
+  // Extract model name (strip the "  ✓ (current)" suffix if present)
+  const model = choice.replace(/\s*✓.*$/, "").trim();
+  await setDefaultModel(ctx, capability, model);
 }
 
 async function setDefaultModel(
