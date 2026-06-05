@@ -16,6 +16,7 @@ import {
 } from "../providers/types.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
+import { getDefaultModel } from "../wizard.js";
 
 const ASSET_TYPE_ENUM = [
   ...VALID_ASSET_TYPES,
@@ -211,7 +212,7 @@ export function registerGenerateSuiteTool(
             throw new Error(`No provider for ${asset.capability}`);
           }
 
-          const model = DEFAULT_MODELS[asset.capability] ?? "image-01";
+          const model = await getDefaultModel(asset.capability);
           const resolution =
             DEFAULT_RESOLUTIONS[asset.assetType] ?? "768p";
 

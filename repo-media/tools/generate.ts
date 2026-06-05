@@ -16,7 +16,7 @@ import {
 } from "../providers/types.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { format } from "node:util";
+import { getDefaultModel } from "../wizard.js";
 
 const ASSET_TYPE_ENUM = [
   ...VALID_ASSET_TYPES,
@@ -151,9 +151,9 @@ export function registerGenerateMediaTool(
         );
       }
 
-      // Resolve defaults
+      // Resolve defaults (user preference > built-in default)
       const model =
-        params.model ?? DEFAULT_MODELS[capability] ?? "image-01";
+        params.model ?? (await getDefaultModel(capability));
       const resolution =
         params.resolution ?? DEFAULT_RESOLUTIONS[asset_type] ?? "768p";
       const aspectRatio =
