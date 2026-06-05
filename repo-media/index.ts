@@ -41,7 +41,7 @@ export default function (pi: ExtensionAPI) {
   if (providers.length === 0) {
     pi.on("session_start", async (_event, ctx) => {
       ctx.ui.notify(
-        "repo-media: No MiniMax API key found. Set MINIMAX_API_KEY (same env var Pi uses for MiniMax text generation).",
+        "repo-media: No MiniMax API key found. Run /login in Pi to authenticate, or set MINIMAX_API_KEY.",
         "warning"
       );
     });

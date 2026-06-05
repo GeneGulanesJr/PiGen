@@ -17,32 +17,45 @@ import type {
   MediaResult,
   VideoStatus,
 } from "./types.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
 const MINIMAX_BASE_URL = "https://api.minimax.io";
 
 // --- API Key Resolution ---
-// Same key used by Pi's built-in MiniMax provider (MINIMAX_API_KEY env var).
-// The extension can also accept a key passed at load time from ctx.modelRegistry.
+// Pi stores API keys in ~/.pi/agent/auth.json (set via /login).
+// We read from there first, then fall back to MINIMAX_API_KEY env var.
 
 let resolvedApiKey: string | undefined;
 
-/** Called from index.ts with API key resolved from Pi's model registry */
+/** Called from index.ts with API key resolved from Pi's auth store */
 export function setApiKey(key: string): void {
   resolvedApiKey = key;
 }
 
+function getApiKeyFromAuthJson(): string | undefined {
+  try {
+    const authPath = join(homedir(), ".pi", "agent", "auth.json");
+    const raw = readFileSync(authPath, "utf-8");
+    const auth = JSON.parse(raw);
+    return auth?.minimax?.key;
+  } catch {
+    return undefined;
+  }
+}
+
 function getApiKey(): string | undefined {
-  // Priority: explicit set > env var (same one Pi uses)
-  return resolvedApiKey ?? process.env.MINIMAX_API_KEY;
+  // Priority: explicit set > Pi's auth.json > env var
+  return resolvedApiKey ?? getApiKeyFromAuthJson() ?? process.env.MINIMAX_API_KEY;
 }
 
 function requireApiKey(): string {
   const key = getApiKey();
   if (!key) {
     throw new Error(
-      "No MiniMax API key found. Pi uses MINIMAX_API_KEY env var for the built-in MiniMax provider — " +
-      "if text generation with MiniMax works in Pi, this extension will use the same key. " +
-      "Otherwise, set MINIMAX_API_KEY in your environment."
+      "No MiniMax API key found. Run /login in Pi to authenticate with MiniMax, " +
+      "or set MINIMAX_API_KEY env var."
     );
   }
   return key;
