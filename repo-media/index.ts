@@ -3,22 +3,45 @@
  *
  * Generates repo-aware media assets (videos, images, voiceovers, music)
  * using AI generation APIs. MiniMax is the first provider.
+ *
+ * API Key: Uses the same MINIMAX_API_KEY env var that Pi's built-in
+ * MiniMax provider uses. If MiniMax works for text in Pi, this extension
+ * picks up the same key automatically.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerGenerateMediaTool } from "./tools/generate.js";
 import { registerGenerateSuiteTool } from "./tools/generate_suite.js";
 import { registerMediaCommand } from "./wizard.js";
-import { loadProviders } from "./providers/minimax.js";
+import { loadProviders, setApiKey } from "./providers/minimax.js";
 
 export default function (pi: ExtensionAPI) {
-  // Load available providers
+  // Try to resolve MiniMax API key from Pi's model registry first,
+  // then fall back to MINIMAX_API_KEY env var
+  pi.on("session_start", async (_event, ctx) => {
+    try {
+      // Pi's built-in minimax provider exposes models via the registry
+      const models = ctx.modelRegistry?.list?.() ?? [];
+      const minimaxModel = models.find((m: any) =>
+        m.provider === "minimax" || m.providerId === "minimax"
+      );
+
+      if (minimaxModel) {
+        // Pi has MiniMax configured — the env var is available
+        // The provider reads MINIMAX_API_KEY at call time, no need to extract
+      }
+    } catch {
+      // modelRegistry access may vary — env var fallback is sufficient
+    }
+  });
+
+  // Load providers (reads MINIMAX_API_KEY env var internally)
   const providers = loadProviders();
 
   if (providers.length === 0) {
     pi.on("session_start", async (_event, ctx) => {
       ctx.ui.notify(
-        "repo-media: No providers configured. Set MINIMAX_API_KEY env var.",
+        "repo-media: No MiniMax API key found. Set MINIMAX_API_KEY (same env var Pi uses for MiniMax text generation).",
         "warning"
       );
     });

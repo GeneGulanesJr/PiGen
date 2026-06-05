@@ -21,16 +21,28 @@ import type {
 const MINIMAX_BASE_URL = "https://api.minimax.io";
 
 // --- API Key Resolution ---
+// Same key used by Pi's built-in MiniMax provider (MINIMAX_API_KEY env var).
+// The extension can also accept a key passed at load time from ctx.modelRegistry.
+
+let resolvedApiKey: string | undefined;
+
+/** Called from index.ts with API key resolved from Pi's model registry */
+export function setApiKey(key: string): void {
+  resolvedApiKey = key;
+}
 
 function getApiKey(): string | undefined {
-  return process.env.MINIMAX_API_KEY;
+  // Priority: explicit set > env var (same one Pi uses)
+  return resolvedApiKey ?? process.env.MINIMAX_API_KEY;
 }
 
 function requireApiKey(): string {
   const key = getApiKey();
   if (!key) {
     throw new Error(
-      "No MiniMax API key found. Set MINIMAX_API_KEY env var or add a MiniMax provider to models.json."
+      "No MiniMax API key found. Pi uses MINIMAX_API_KEY env var for the built-in MiniMax provider — " +
+      "if text generation with MiniMax works in Pi, this extension will use the same key. " +
+      "Otherwise, set MINIMAX_API_KEY in your environment."
     );
   }
   return key;

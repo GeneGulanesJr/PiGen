@@ -383,19 +383,16 @@ No target specified → `./repo-media/{asset-type}-{timestamp}.{ext}`.
 
 ## Authentication
 
-Each provider defines its own key resolution:
+The extension uses the **same `MINIMAX_API_KEY` env var that Pi's built-in MiniMax provider uses**. If MiniMax works for text generation in Pi, the extension picks up the key automatically — no separate configuration needed.
 
-**Primary — Environment variables (provider-specific):**
-- MiniMax: `MINIMAX_API_KEY`
-- Future Replicate: `REPLICATE_API_TOKEN`
-- Future ElevenLabs: `ELEVENLABS_API_KEY`
-- etc.
+**Resolution order:**
+1. `process.env.MINIMAX_API_KEY` — same env var Pi reads for its built-in MiniMax text provider
+2. Future: `ctx.modelRegistry` lookup for providers with baseUrl matching `minimax.io`
 
-**Secondary — models.json lookup:**
-Providers can optionally check `ctx.modelRegistry` for a provider with a matching baseUrl (e.g., any provider whose baseUrl contains `minimax.io`). This is a nicety, not the primary path.
+**Why this works:** MiniMax's text API (`/anthropic`) and media APIs (`/v1/image_generation`, `/v1/t2a_v2`, `/v1/music_generation`, `/v1/video_generation`) all use the same API key against the same `api.minimax.io` base URL. One key, all capabilities.
 
 **Error when no key found:**
-> "No MiniMax API key found. Set MINIMAX_API_KEY env var or add a MiniMax provider to models.json."
+> "No MiniMax API key found. Pi uses MINIMAX_API_KEY for the built-in MiniMax provider — if text generation with MiniMax works in Pi, this extension will use the same key. Otherwise, set MINIMAX_API_KEY in your environment."
 
 ## Error Handling
 
