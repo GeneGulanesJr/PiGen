@@ -56,7 +56,14 @@ export default function (pi: ExtensionAPI) {
   registerMediaCommand(pi, providers);
 
   pi.on("session_start", async (_event, ctx) => {
-    const names = providers.map((p) => p.name).join(", ");
-    ctx.ui.notify(`repo-media loaded — providers: ${names}`, "info");
+    if (providers.length === 0) {
+      ctx.ui.notify(
+        "repo-media: No media providers. Check MiniMax API key in ~/.pi/agent/auth.json",
+        "error"
+      );
+    } else {
+      const names = providers.map((p) => p.name).join(", ");
+      ctx.ui.notify(`repo-media loaded — providers: ${names}`, "info");
+    }
   });
 }

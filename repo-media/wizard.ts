@@ -86,7 +86,7 @@ export function registerMediaCommand(
           await handleModels(ctx, providers, parts.slice(1));
           break;
         case "suite":
-          await handleSuite(ctx);
+          await handleSuite(ctx, providers);
           break;
         case "list":
           await handleList(ctx);
@@ -109,6 +109,15 @@ async function handleModels(
   providers: MediaProvider[],
   args: string[]
 ) {
+  // Validate providers are loaded
+  if (providers.length === 0) {
+    ctx.ui.notify(
+      "No media providers loaded. Check your MiniMax API key in ~/.pi/agent/auth.json",
+      "error"
+    );
+    return;
+  }
+
   const capabilities: Capability[] = ["image", "speech", "music", "video"];
 
   // Step 1: Pick which capability to configure
@@ -189,6 +198,15 @@ function getModelList(
 // --- /media (wizard) ---
 
 async function handleWizard(ctx: any, providers: MediaProvider[]) {
+  // Validate providers are loaded
+  if (providers.length === 0) {
+    ctx.ui.notify(
+      "No media providers loaded. Check your MiniMax API key in ~/.pi/agent/auth.json",
+      "error"
+    );
+    return;
+  }
+
   // Step 1: Asset type
   const assetType = await ctx.ui.select(
     "What do you want to create?",
@@ -267,7 +285,16 @@ async function handleWizard(ctx: any, providers: MediaProvider[]) {
 
 // --- /media suite ---
 
-async function handleSuite(ctx: any) {
+async function handleSuite(ctx: any, providers: MediaProvider[]) {
+  // Validate providers are loaded
+  if (providers.length === 0) {
+    ctx.ui.notify(
+      "No media providers loaded. Check your MiniMax API key in ~/.pi/agent/auth.json",
+      "error"
+    );
+    return;
+  }
+
   const theme = await ctx.ui.input("Suite theme:", "My project");
   if (!theme) return;
 
