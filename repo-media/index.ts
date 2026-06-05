@@ -13,7 +13,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerGenerateMediaTool } from "./tools/generate.js";
 import { registerGenerateSuiteTool } from "./tools/generate_suite.js";
 import { registerMediaCommand } from "./wizard.js";
-import { loadProviders, setApiKey } from "./providers/minimax.js";
+import { loadProviders } from "./providers/minimax.js";
 
 export default function (pi: ExtensionAPI) {
   // Try to resolve MiniMax API key from Pi's model registry first,
