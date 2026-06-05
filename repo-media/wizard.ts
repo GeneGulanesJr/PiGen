@@ -86,7 +86,7 @@ export function registerMediaCommand(
           await handleModels(ctx, providers, parts.slice(1));
           break;
         case "suite":
-          await handleSuite(ctx, providers);
+          await handleSuite(pi, ctx, providers);
           break;
         case "list":
           await handleList(ctx);
@@ -95,7 +95,7 @@ export function registerMediaCommand(
           await handleClean(ctx);
           break;
         default:
-          await handleWizard(ctx, providers);
+          await handleWizard(pi, ctx, providers);
           break;
       }
     },
@@ -197,7 +197,7 @@ function getModelList(
 
 // --- /media (wizard) ---
 
-async function handleWizard(ctx: any, providers: MediaProvider[]) {
+async function handleWizard(pi: ExtensionAPI, ctx: any, providers: MediaProvider[]) {
   // Validate providers are loaded
   if (providers.length === 0) {
     ctx.ui.notify(
@@ -245,11 +245,11 @@ async function handleWizard(ctx: any, providers: MediaProvider[]) {
     const models = getModelList(provider, capability);
 
     if (models.length > 1) {
-      const changeModel = await ctx.ui.confirm(
+      const useDefault = await ctx.ui.confirm(
         `Model: ${currentDefault}`,
-        `Use default (${currentDefault}) or pick a different model?`
+        `Use default (${currentDefault})?`
       );
-      if (!changeModel) {
+      if (!useDefault) {
         const choice = await ctx.ui.select(
           `Select ${capability} model:`,
           models.map((m) =>
@@ -257,8 +257,9 @@ async function handleWizard(ctx: any, providers: MediaProvider[]) {
           )
         );
         if (choice) {
+          const selected = choice.replace(/\s*\(default\)\s*$/, "").trim();
           ctx.ui.notify(
-            `Using ${choice} for this generation. (Set permanent default with /media models ${capability} ${choice})`,
+            `Using ${selected} for this generation. (Set permanent default with /media models)`,
             "info"
           );
         }
@@ -280,12 +281,27 @@ async function handleWizard(ctx: any, providers: MediaProvider[]) {
   );
   if (!ok) return;
 
-  ctx.ui.notify(`Generating ${assetType}...`, "info");
+  // Build tool call message — this triggers blocking tool execution
+  // so onUpdate callbacks stream progress back in real-time
+  const toolArgs = JSON.stringify({
+    prompt,
+    asset_type: assetType.replace(/\s+/g, "_"),
+    target,
+    style: style?.toLowerCase() as any,
+    confirm: false,
+  }, null, 2);
+  await pi.sendUserMessage(
+    `Please call the generate_media tool with these arguments:
+\`\`\`json
+${toolArgs}
+\`\`\``,
+    { deliverAs: "steer" }
+  );
 }
 
 // --- /media suite ---
 
-async function handleSuite(ctx: any, providers: MediaProvider[]) {
+async function handleSuite(pi: ExtensionAPI, ctx: any, providers: MediaProvider[]) {
   // Validate providers are loaded
   if (providers.length === 0) {
     ctx.ui.notify(
@@ -300,7 +316,16 @@ async function handleSuite(ctx: any, providers: MediaProvider[]) {
 
   const target = await ctx.ui.input("Target feature/module:", "whole repo");
 
-  ctx.ui.notify("Starting media suite generation...", "info");
+  // Build tool call message — this triggers blocking tool execution
+  // so onUpdate callbacks stream progress back in real-time
+  const toolArgs = JSON.stringify({ prompt: theme, target: target || undefined, confirm: false }, null, 2);
+  await pi.sendUserMessage(
+    `Please call the generate_media_suite tool with these arguments:
+\`\`\`json
+${toolArgs}
+\`\`\``,
+    { deliverAs: "steer" }
+  );
 }
 
 // --- /media list ---
