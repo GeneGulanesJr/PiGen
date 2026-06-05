@@ -1,0 +1,9 @@
+{
+  "name": "repo-media",
+  "version": "0.1.0",
+  "description": "Pi extension for generating repo-aware media assets — videos, images, voiceovers, music",
+  "private": true,
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
