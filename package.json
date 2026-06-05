@@ -1,0 +1,10 @@
+{
+  "name": "pigen",
+  "version": "0.1.0",
+  "description": "Pi extension for generating repo-aware media assets — videos, images, voiceovers, music",
+  "keywords": ["pi-package"],
+  "private": true,
+  "pi": {
+    "extensions": ["./repo-media"]
+  }
+}

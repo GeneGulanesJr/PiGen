@@ -30,7 +30,19 @@ Generates project media from repo context. Pi already knows your codebase; this 
 
 ## Setup
 
-### Install
+### Install via Pi (recommended)
+
+```bash
+pi install git:github.com/GeneGulanesJr/PiGen
+```
+
+Or try without installing:
+
+```bash
+pi -e git:github.com/GeneGulanesJr/PiGen
+```
+
+### Manual Install
 
 Copy or symlink the extension to Pi's global extensions directory:
 
@@ -40,13 +52,12 @@ ln -s /path/to/PiGen/repo-media ~/.pi/agent/extensions/repo-media
 
 ### Configure API Key
 
-Set the environment variable for your provider:
+The extension uses the **same MiniMax API key that Pi uses** for text generation. If MiniMax works for text in your Pi, the extension works automatically — no extra configuration needed.
 
-```bash
-export MINIMAX_API_KEY="your-key-here"
-```
+If you haven't set up MiniMax yet:
 
-Or add a MiniMax provider to `~/.pi/agent/models.json` — the extension will pick up the key automatically.
+1. Run `/login` in Pi and authenticate with MiniMax
+2. Or set `MINIMAX_API_KEY` environment variable
 
 ## Usage
 
