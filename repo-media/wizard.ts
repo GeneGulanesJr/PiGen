@@ -283,11 +283,13 @@ async function handleWizard(pi: ExtensionAPI, ctx: any, providers: MediaProvider
 
   // Build tool call message — this triggers blocking tool execution
   // so onUpdate callbacks stream progress back in real-time
+  const styledPrompt = style
+    ? `[Style: ${style}] ${prompt}`
+    : prompt;
   const toolArgs = JSON.stringify({
-    prompt,
+    prompt: styledPrompt,
     asset_type: assetType.replace(/\s+/g, "_"),
     target,
-    style: style?.toLowerCase() as any,
     confirm: false,
   }, null, 2);
   await pi.sendUserMessage(
