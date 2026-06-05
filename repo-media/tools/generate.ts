@@ -215,8 +215,7 @@ export function registerGenerateMediaTool(
             const imgResult = await provider.image!.generate({
               prompt: params.prompt,
               model,
-              aspectRatio:
-                asset_type === "social_asset" ? aspectRatio : undefined,
+              aspectRatio: aspectRatio !== "1:1" ? aspectRatio : undefined,
             });
             resultData = imgResult.data;
             resultFormat = imgResult.format;
