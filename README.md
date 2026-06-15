@@ -1,5 +1,7 @@
 # PiGen — Media Generation Extensions for Pi
 
+![PiGen banner](banner.jpeg)
+
 Pi extensions for generating repo-aware media assets — videos, images, voiceovers, music — using AI generation APIs.
 
 > **Presentation-first by default.** Image generation is tuned for **slide decks, explainer videos, and illustrated docs** (16:9 framing, editorial-illustration style, slide-ready negative space). Marketing assets (hero, social) are still supported but are no longer the default. The aesthetic draws from the illustration-led style of [plannotator/effective-html](https://github.com/plannotator/effective-html), [tmchow/illo-skill](https://github.com/tmchow/illo-skill), [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master), [nexu-io/html-video](https://github.com/nexu-io/html-video), and [heygen-com/hyperframes](https://github.com/heygen-com/hyperframes).
