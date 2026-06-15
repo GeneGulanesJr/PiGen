@@ -61,25 +61,73 @@ const DEFAULT_SUITE_ASSETS: Array<{
  * per-asset prompt, we compose one from the theme + this template. The
  * templates steer the LLM-generated composition toward slide-friendly
  * framing (negative space, focal subject, illustration-led, 16:9).
+ *
+ * HARDENED (round 2) — image models often default to photorealism, so
+ * every image template is prefixed with STYLE_PREFIX (strong positive
+ * illustration cues plus a list of well-known reference brands) and
+ * suffixed with NEG_BLOCK (explicit "do not"s that push the model away
+ * from photography / portraits / 3D). The original round-1 prompts only
+ * had soft positive cues ("like a New Yorker cover") and the model
+ * produced a photorealistic portrait — the NEG block is what fixes that.
  */
+const STYLE_PREFIX =
+  "2D editorial illustration, hand-drawn vector, flat color with subtle depth, " +
+  "limited palette, clean linework, no camera depth of field, no lens blur. " +
+  "Visual language references: Notion changelog, Stripe blog hero, Linear blog, " +
+  "Vercel docs, GitHub Octocat, OpenAI hero, Anthropic announcement art. ";
+
+const NEG_BLOCK =
+  "STRICT NEGATIVE: no photograph, no photorealism, no 3D render, no CGI, " +
+  "no human portrait, no human face, no headshot, no lens flare, no bokeh, " +
+  "no cinematic lighting on a real person, no realistic skin, no realistic eyes. " +
+  "Illustration only.";
+
 const ASSET_PROMPT_TEMPLATES: Record<string, (theme: string) => string> = {
   slide_cover: (theme) =>
-    `Title-slide cover illustration for: ${theme}. Bold focal subject, dramatic lighting, cinematic composition. Generous negative space at the top for a headline and at the bottom for a subtitle. 16:9 framing. Style: editorial illustration, like a New Yorker cover or Stripe blog hero.`,
+    `${STYLE_PREFIX}` +
+    `Title-slide cover illustration for: ${theme}. ` +
+    `Bold focal subject, dramatic but flat-with-depth lighting, cinematic composition. ` +
+    `Generous negative space at the top (headline-safe) and at the bottom (subtitle-safe). ` +
+    `16:9 framing. ${NEG_BLOCK}`,
   slide_illustration: (theme) =>
-    `Slide-ready editorial illustration for: ${theme}. One clear visual metaphor. Friendly, modern, flat-with-depth style. Generous headline-safe area at the top, caption-safe area at the bottom. 16:9. No embedded text. Match the visual language of plannotator/effective-html and tmchow/illo-skill.`,
+    `${STYLE_PREFIX}` +
+    `Slide-ready editorial illustration for: ${theme}. ` +
+    `One clear visual metaphor rendered as a friendly, modern 2D illustration. ` +
+    `Generous headline-safe area at the top, caption-safe area at the bottom. ` +
+    `16:9. No embedded text. ${NEG_BLOCK}`,
   step_diagram: (theme) =>
-    `Sequential step diagram explaining: ${theme}. Numbered flow (1 → 2 → 3 → 4) progressing left-to-right. Each step has a clean iconographic illustration. Visual progression is the key. 16:9. Suitable for an explainer slide.`,
+    `${STYLE_PREFIX}` +
+    `Sequential step diagram explaining: ${theme}. ` +
+    `Numbered flow (1 → 2 → 3 → 4) progressing left-to-right, each step is a clean ` +
+    `flat iconographic illustration connected by arrows. Visual progression is the key. ` +
+    `16:9. Suitable for an explainer slide. ${NEG_BLOCK}`,
   concept_diagram: (theme) =>
-    `Concept diagram illustrating: ${theme}. Abstract metaphor rendered in a clean editorial illustration style. One central idea, supporting visual elements around it. 16:9. Think Stripe blog / Notion changelog illustration.`,
+    `${STYLE_PREFIX}` +
+    `Concept diagram illustrating: ${theme}. ` +
+    `Abstract metaphor rendered as a 2D editorial illustration with one central idea ` +
+    `and supporting visual elements around it. ` +
+    `16:9. ${NEG_BLOCK}`,
   frame: (theme) =>
-    `Single storyboard frame for: ${theme}. A specific moment in the narrative. Describe the camera angle, the action, the lighting, the composition. 16:9. Match the framing language of html-video and hyperframes.`,
+    `${STYLE_PREFIX}` +
+    `Single storyboard frame for: ${theme}. ` +
+    `A specific moment in the narrative rendered as a 2D illustrated frame — wide ` +
+    `shot, consistent character design, clear silhouette, readable background. ` +
+    `16:9. Match the framing language of html-video and hyperframes. ${NEG_BLOCK}`,
   // Marketing / docs
   architecture_diagram: (theme) =>
-    `Architecture diagram for: ${theme}. Isometric view, dark theme, labeled components, clean technical illustration. 16:9.`,
+    `${STYLE_PREFIX}` +
+    `Architecture diagram for: ${theme}. ` +
+    `Isometric 2D illustration, dark theme background, labeled components, clean ` +
+    `technical linework. 16:9. ${NEG_BLOCK}`,
   hero_image: (theme) =>
-    `Hero banner for: ${theme}. Professional GitHub README style. 16:9. Clear focal subject, modern illustration style.`,
+    `${STYLE_PREFIX}` +
+    `Hero banner illustration for: ${theme}. ` +
+    `Professional GitHub README style — bold 2D illustration, clear focal subject, ` +
+    `modern flat color. 16:9. ${NEG_BLOCK}`,
   social_asset: (theme) =>
-    `Social media card for: ${theme}. Bold layout, single focal element, eye-catching.`,
+    `${STYLE_PREFIX}` +
+    `Social media card illustration for: ${theme}. ` +
+    `Bold layout, single focal element, eye-catching 2D composition. ${NEG_BLOCK}`,
   // Audio
   voiceover: (theme) =>
     `Narration: Introduce "${theme}" and walk the viewer through what it does, who it is for, and why it matters. Keep it conversational, around 60-90 seconds.`,
@@ -282,10 +330,16 @@ export function registerGenerateSuiteTool(
 
           switch (asset.capability) {
             case "image": {
+              // The slide/marketing image templates already include a
+              // STRICT NEGATIVE block in the prompt itself. We pass
+              // negativePrompt through to the provider for future
+              // providers that support it natively.
               const r = await provider.image!.generate({
                 prompt: asset.prompt,
                 model,
                 aspectRatio: asset.aspectRatio,
+                negativePrompt:
+                  "photograph, photorealism, 3D render, CGI, human portrait, human face, headshot, lens flare, bokeh, realistic skin, realistic eyes",
               });
               resultData = r.data;
               resultFormat = r.format;

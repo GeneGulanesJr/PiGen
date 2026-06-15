@@ -40,6 +40,8 @@ export function registerGenerateMediaTool(
       "Use generate_media to create visual and audio assets for the repo.",
       "The prompt parameter is the FINAL generation-ready prompt — write it using repo context before calling the tool.",
       "Image asset types are organized for two intents: PRESENTATION/ILLUSTRATION (slide_*, step_*, concept_*, frame) and MARKETING (hero_image, social_asset, architecture_diagram).",
+      "HARDENED STYLE CUE (apply to ALL image prompts): prefix the prompt with '2D editorial illustration, hand-drawn vector, flat color with subtle depth, limited palette, clean linework, no camera depth of field, no lens blur.' Reference well-known illustration languages: Notion changelog, Stripe blog hero, Linear blog, Vercel docs, GitHub Octocat, OpenAI hero, Anthropic announcement art.",
+      "HARDENED NEGATIVE BLOCK (apply to ALL image prompts): append 'STRICT NEGATIVE: no photograph, no photorealism, no 3D render, no CGI, no human portrait, no human face, no headshot, no lens flare, no bokeh, no cinematic lighting on a real person, no realistic skin, no realistic eyes. Illustration only.' Image models default to photorealism; soft cues like 'like a New Yorker cover' are insufficient on their own.",
       "For presentation image types, the prompt should describe a SLIDE-READY composition: clear focal subject, generous negative space for headline text overlay, illustration-led (not photo-led), 16:9 framing.",
       "For slide_cover: bold focal subject, dramatic lighting, headline-friendly composition with negative space at the top or center. Think book cover or movie poster energy.",
       "For slide_illustration: editorial / explainer illustration with one clear metaphor, friendly style, room for a headline at the top and a caption at the bottom. Match the visual language of plannotator/effective-html or tmchow/illo-skill.",
@@ -113,6 +115,12 @@ export function registerGenerateMediaTool(
         Type.String({
           description:
             "Aspect ratio override for image assets (e.g. '16:9', '4:3', '1:1', '9:16', '3:2'). Defaults to the asset type's native ratio (16:9 for slide/image types, 1:1 for social_asset).",
+        })
+      ),
+      negative_prompt: Type.Optional(
+        Type.String({
+          description:
+            "Negative prompt for image assets. Suffixes the prompt with 'STRICT NEGATIVE: <your text>'. Use to steer the model away from photorealism, portraits, etc. MiniMax image-01 has no separate negative_prompt field, so this is appended to the prompt.",
         })
       ),
       reference_image: Type.Optional(
@@ -228,10 +236,18 @@ export function registerGenerateMediaTool(
 
         switch (capability) {
           case "image": {
+            // MiniMax image-01 has no separate negative_prompt field, so we
+            // append the user's negative_prompt to the prompt text. The
+            // provider-level negativePrompt field is reserved for future
+            // providers that support it natively (e.g. Stable Diffusion).
+            const finalPrompt = params.negative_prompt
+              ? `${params.prompt}\n\nSTRICT NEGATIVE: ${params.negative_prompt}`
+              : params.prompt;
             const imgResult = await provider.image!.generate({
-              prompt: params.prompt,
+              prompt: finalPrompt,
               model,
               aspectRatio: aspectRatio !== "1:1" ? aspectRatio : undefined,
+              negativePrompt: params.negative_prompt,
             });
             resultData = imgResult.data;
             resultFormat = imgResult.format;

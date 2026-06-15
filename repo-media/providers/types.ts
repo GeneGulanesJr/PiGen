@@ -17,6 +17,8 @@ export interface ImageParams {
   prompt: string;
   model: string;
   aspectRatio?: string;
+  /** Negative prompt — things the model should NOT generate (passed through to providers that support it). */
+  negativePrompt?: string;
   subjectReference?: { type: string; image: string[] };
 }
 
