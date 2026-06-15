@@ -32,20 +32,67 @@ interface SuiteAsset {
   aspectRatio?: string;
 }
 
+/**
+ * Default suite assets — the kit generated when the user calls
+ * /media suite without specifying `assets`.
+ *
+ * PRESENTATION-FOCUSED by default: produces a slide-deck-ready kit
+ * (cover + overview illustration + step diagram + concept diagram) plus
+ * voiceover and background music for an explainer. To get the marketing
+ * kit (hero + social trio) instead, pass `assets` explicitly.
+ */
 const DEFAULT_SUITE_ASSETS: Array<{
   assetType: string;
   filename: string;
   aspectRatio?: string;
 }> = [
-  { assetType: "architecture_diagram", filename: "architecture-diagram" },
-  { assetType: "hero_image", filename: "hero-image", aspectRatio: "16:9" },
+  // Presentation / illustration — the slide-deck core (16:9 throughout)
+  { assetType: "slide_cover", filename: "slide-01-cover", aspectRatio: "16:9" },
+  { assetType: "slide_illustration", filename: "slide-02-overview", aspectRatio: "16:9" },
+  { assetType: "step_diagram", filename: "slide-03-how-it-works", aspectRatio: "16:9" },
+  { assetType: "concept_diagram", filename: "slide-04-deep-dive", aspectRatio: "16:9" },
+  // Audio
   { assetType: "voiceover", filename: "voiceover" },
   { assetType: "background_music", filename: "background-music" },
-  { assetType: "video_explainer", filename: "explainer" },
-  { assetType: "social_asset", filename: "social-1x1", aspectRatio: "1:1" },
-  { assetType: "social_asset", filename: "social-16x9", aspectRatio: "16:9" },
-  { assetType: "social_asset", filename: "social-9x16", aspectRatio: "9:16" },
 ];
+
+/**
+ * Per-asset-type prompt templates. When the user does NOT provide a
+ * per-asset prompt, we compose one from the theme + this template. The
+ * templates steer the LLM-generated composition toward slide-friendly
+ * framing (negative space, focal subject, illustration-led, 16:9).
+ */
+const ASSET_PROMPT_TEMPLATES: Record<string, (theme: string) => string> = {
+  slide_cover: (theme) =>
+    `Title-slide cover illustration for: ${theme}. Bold focal subject, dramatic lighting, cinematic composition. Generous negative space at the top for a headline and at the bottom for a subtitle. 16:9 framing. Style: editorial illustration, like a New Yorker cover or Stripe blog hero.`,
+  slide_illustration: (theme) =>
+    `Slide-ready editorial illustration for: ${theme}. One clear visual metaphor. Friendly, modern, flat-with-depth style. Generous headline-safe area at the top, caption-safe area at the bottom. 16:9. No embedded text. Match the visual language of plannotator/effective-html and tmchow/illo-skill.`,
+  step_diagram: (theme) =>
+    `Sequential step diagram explaining: ${theme}. Numbered flow (1 → 2 → 3 → 4) progressing left-to-right. Each step has a clean iconographic illustration. Visual progression is the key. 16:9. Suitable for an explainer slide.`,
+  concept_diagram: (theme) =>
+    `Concept diagram illustrating: ${theme}. Abstract metaphor rendered in a clean editorial illustration style. One central idea, supporting visual elements around it. 16:9. Think Stripe blog / Notion changelog illustration.`,
+  frame: (theme) =>
+    `Single storyboard frame for: ${theme}. A specific moment in the narrative. Describe the camera angle, the action, the lighting, the composition. 16:9. Match the framing language of html-video and hyperframes.`,
+  // Marketing / docs
+  architecture_diagram: (theme) =>
+    `Architecture diagram for: ${theme}. Isometric view, dark theme, labeled components, clean technical illustration. 16:9.`,
+  hero_image: (theme) =>
+    `Hero banner for: ${theme}. Professional GitHub README style. 16:9. Clear focal subject, modern illustration style.`,
+  social_asset: (theme) =>
+    `Social media card for: ${theme}. Bold layout, single focal element, eye-catching.`,
+  // Audio
+  voiceover: (theme) =>
+    `Narration: Introduce "${theme}" and walk the viewer through what it does, who it is for, and why it matters. Keep it conversational, around 60-90 seconds.`,
+  background_music: () =>
+    `Subtle, modern, instrumental background music suitable for a technical explainer video. Minimal percussion, warm synth pads, calm tempo.`,
+  // Video
+  video_explainer: (theme) =>
+    `Animated explainer video for: ${theme}. Step-by-step walkthrough with [Zoom in] on key details and [Pan left] between sections. Modern motion graphics style.`,
+  feature_showcase: (theme) =>
+    `Feature showcase video for: ${theme}. Dynamic demonstration with [Tracking shot] reveals and [Push in] on key UI moments.`,
+  screenshot_animation: (theme) =>
+    `Smooth pan/zoom over a screenshot showing: ${theme}. Use [Push in] and [Pan] camera commands.`,
+};
 
 export function registerGenerateSuiteTool(
   pi: ExtensionAPI,
@@ -55,19 +102,29 @@ export function registerGenerateSuiteTool(
     name: "generate_media_suite",
     label: "Generate Media Suite",
     description:
-      "Batch generate a full media kit for a repo feature — architecture diagram, hero image, " +
-      "voiceover, background music, video explainer, and social assets. " +
-      "Use the prompts map to provide per-asset generation prompts. " +
-      "Missing prompts fall back to the theme + asset-type template.",
+      "Batch generate a full media kit for a repo feature. The default kit is " +
+      "PRESENTATION-FOCUSED — slide_cover, slide_illustrations, step_diagram, " +
+      "concept_diagram, voiceover, and background_music. Pass `assets` to " +
+      "override (e.g. ['hero_image', 'social_asset', 'social_asset', 'social_asset'] " +
+      "for the marketing kit). Use the prompts map to provide per-asset " +
+      "generation prompts. Missing prompts fall back to per-asset-type templates.",
     promptSnippet:
       "Generate a full media suite for a repo feature — all assets at once",
     promptGuidelines: [
       "Use generate_media_suite when the user wants a complete media kit for a feature or module.",
       "Provide per-asset prompts in the prompts map. Each prompt should be crafted for its specific asset type.",
       "The prompt parameter is the overall theme. Individual prompts in the prompts map override it per asset.",
+      "Default suite is PRESENTATION-FOCUSED: slide_cover + 2 slide_illustrations + step_diagram + concept_diagram + voiceover + background_music. Override the assets list to generate marketing material (hero_image + social_asset trio) or custom combos.",
+      "For presentation image types, prompts should describe SLIDE-READY compositions with clear focal subject, negative space for text overlay, and illustration-led framing (16:9).",
+      "For slide_cover: bold focal subject, dramatic lighting, headline-friendly composition.",
+      "For slide_illustration: editorial illustration with one clear metaphor, friendly style, room for a headline at the top and a caption at the bottom.",
+      "For step_diagram: numbered or sequenced flow with visual progression, clean iconography.",
+      "For concept_diagram: explanatory concept art, abstract metaphor in editorial style.",
+      "For frame: ONE moment of a storyboard or video sequence, with camera angle and action.",
       "For voiceover: the prompt IS the narration text, not a description of desired narration.",
       "For background_music: describe style, mood, instrumentation.",
       "For social_asset: one prompt generates all 3 aspect ratio variants (1:1, 16:9, 9:16).",
+      "For hero_image: professional GitHub README hero banner, 16:9.",
     ],
     parameters: Type.Object({
       prompt: Type.String({
@@ -131,10 +188,12 @@ export function registerGenerateSuiteTool(
       // Build suite assets with prompts
       const suiteAssets: SuiteAsset[] = assetList.map((a) => {
         const capability = ASSET_CAPABILITY_MAP[a.assetType] as Capability;
+        const aspectKey = a.aspectRatio?.replace(":", "x");
+        const template = ASSET_PROMPT_TEMPLATES[a.assetType];
         const assetPrompt =
           prompts[a.assetType] ??
-          prompts[`${a.assetType}_${a.aspectRatio?.replace(":", "x")}`] ??
-          `${theme} — ${a.assetType.replace(/_/g, " ")}`;
+          prompts[`${a.assetType}_${aspectKey}`] ??
+          (template ? template(theme) : `${theme} — ${a.assetType.replace(/_/g, " ")}`);
 
         return {
           assetType: a.assetType,
@@ -158,9 +217,10 @@ export function registerGenerateSuiteTool(
           `📦 Media Suite: "${theme}"`,
           "",
           "Will generate:",
-          ...suiteAssets.map(
-            (a) => `  ✅ ${a.filename}.${a.ext} (${a.assetType})`
-          ),
+          ...suiteAssets.map((a) => {
+            const aspect = a.aspectRatio ? ` (${a.aspectRatio})` : "";
+            return `  ✅ ${a.filename}.${a.ext} — ${a.assetType}${aspect}`;
+          }),
           "",
           `Output: ${resolve(ctx.cwd, outputDir)}`,
         ];

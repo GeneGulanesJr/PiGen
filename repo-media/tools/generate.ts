@@ -39,6 +39,13 @@ export function registerGenerateMediaTool(
     promptGuidelines: [
       "Use generate_media to create visual and audio assets for the repo.",
       "The prompt parameter is the FINAL generation-ready prompt — write it using repo context before calling the tool.",
+      "Image asset types are organized for two intents: PRESENTATION/ILLUSTRATION (slide_*, step_*, concept_*, frame) and MARKETING (hero_image, social_asset, architecture_diagram).",
+      "For presentation image types, the prompt should describe a SLIDE-READY composition: clear focal subject, generous negative space for headline text overlay, illustration-led (not photo-led), 16:9 framing.",
+      "For slide_cover: bold focal subject, dramatic lighting, headline-friendly composition with negative space at the top or center. Think book cover or movie poster energy.",
+      "For slide_illustration: editorial / explainer illustration with one clear metaphor, friendly style, room for a headline at the top and a caption at the bottom. Match the visual language of plannotator/effective-html or tmchow/illo-skill.",
+      "For step_diagram: numbered or sequenced flow (1 → 2 → 3), visual progression left-to-right or top-to-bottom, clean iconography, suitable for an explainer slide.",
+      "For concept_diagram: explanatory concept art — abstract metaphor rendered in a clean editorial style. Think New Yorker / Stripe blog illustration.",
+      "For frame: ONE frame of a storyboard or video sequence. Describe the moment, the camera angle, the action, and the visual composition. Match the language of html-video or hyperframes.",
       "For video_explainer: describe step-by-step animated walkthroughs with camera commands like [Pan left], [Zoom in].",
       "For feature_showcase: describe dynamic demonstrations with [Tracking shot] for reveals.",
       "For architecture_diagram: describe clean technical diagrams, isometric view, dark theme, labeled components.",
@@ -49,6 +56,7 @@ export function registerGenerateMediaTool(
       "For social_asset: describe eye-catching social media previews with bold layout.",
       "For custom: specify a model explicitly to determine which generation capability to use.",
       "Always specify asset_type — it determines which provider capability (image, speech, music, video) to use.",
+      "For images, aspect_ratio defaults to 16:9 (slide-native). Override with a different ratio (4:3, 3:2, 1:1, 9:16) when needed — e.g. 9:16 for vertical short-form frames.",
     ],
     parameters: Type.Object({
       prompt: Type.String({
@@ -99,6 +107,12 @@ export function registerGenerateMediaTool(
         Type.String({
           description:
             "Voice ID for speech. Default: English_expressive_narrator.",
+        })
+      ),
+      aspect_ratio: Type.Optional(
+        Type.String({
+          description:
+            "Aspect ratio override for image assets (e.g. '16:9', '4:3', '1:1', '9:16', '3:2'). Defaults to the asset type's native ratio (16:9 for slide/image types, 1:1 for social_asset).",
         })
       ),
       reference_image: Type.Optional(
@@ -157,8 +171,11 @@ export function registerGenerateMediaTool(
         params.model ?? (await getDefaultModel(capability));
       const resolution =
         params.resolution ?? DEFAULT_RESOLUTIONS[asset_type] ?? "768p";
+      // Image aspect ratio: explicit param > asset-type default > 16:9 (slide-native fallback)
       const aspectRatio =
-        DEFAULT_ASPECT_RATIOS[asset_type] ?? "1:1";
+        params.aspect_ratio ??
+        DEFAULT_ASPECT_RATIOS[asset_type] ??
+        "16:9";
       const ext = ASSET_EXTENSIONS[asset_type] ?? "mp4";
 
       // Build output path
@@ -181,12 +198,10 @@ export function registerGenerateMediaTool(
           `Asset: ${asset_type}`,
           `Model: ${model}`,
         ];
-        if (["video", "image"].includes(capability)) {
-          details.push(
-            capability === "video"
-              ? `Duration: ${params.duration ?? 6}s, Resolution: ${resolution}`
-              : `Aspect: ${aspectRatio}`
-          );
+        if (capability === "video") {
+          details.push(`Duration: ${params.duration ?? 6}s, Resolution: ${resolution}`);
+        } else if (capability === "image") {
+          details.push(`Aspect: ${aspectRatio}`);
         }
         details.push(`Output: ${outputPath}`);
 

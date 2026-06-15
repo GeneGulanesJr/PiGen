@@ -9,6 +9,8 @@ import {
   VALID_ASSET_TYPES,
   DEFAULT_MODELS,
   ASSET_CAPABILITY_MAP,
+  ASSET_TYPE_CATEGORIES,
+  PRESENTATION_IMAGE_TYPES,
 } from "./providers/types.js";
 import { readdir, stat, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -207,12 +209,35 @@ async function handleWizard(pi: ExtensionAPI, ctx: any, providers: MediaProvider
     return;
   }
 
-  // Step 1: Asset type
-  const assetType = await ctx.ui.select(
+  // Step 1: Asset type — grouped by category so the slide-deck /
+  // illustration options surface first, then videos, audio, docs/social,
+  // and custom. Category headers are decorative dividers.
+  const categoryOrder = [
+    "Slides & illustrations",
+    "Videos",
+    "Audio",
+    "Docs & social",
+    "Custom (specify model)",
+  ];
+  const assetTypeOptions: string[] = [];
+  for (const cat of categoryOrder) {
+    const types = ASSET_TYPE_CATEGORIES[cat] ?? [];
+    if (types.length === 0) continue;
+    assetTypeOptions.push(`── ${cat} ──`);
+    for (const t of types) {
+      assetTypeOptions.push(t.replace(/_/g, " "));
+    }
+  }
+  const assetTypeChoice = await ctx.ui.select(
     "What do you want to create?",
-    VALID_ASSET_TYPES.map((t) => t.replace(/_/g, " "))
+    assetTypeOptions
   );
-  if (!assetType) return;
+  if (!assetTypeChoice) return;
+  if (assetTypeChoice.startsWith("──")) {
+    ctx.ui.notify("Pick a specific asset type, not a category.", "warning");
+    return;
+  }
+  const assetType = assetTypeChoice.replace(/\s+/g, "_");
 
   // Step 2: Target
   const targetChoice = await ctx.ui.select("What should it cover?", [
@@ -225,8 +250,12 @@ async function handleWizard(pi: ExtensionAPI, ctx: any, providers: MediaProvider
     target = await ctx.ui.input("Feature/module name:", "my-feature");
   }
 
-  // Step 3: Style
+  // Step 3: Style — "Editorial illustration" is the new default for
+  // presentation image types; it steers the LLM toward clean
+  // illustration-led compositions with negative space (matches
+  // plannotator/effective-html and tmchow/illo-skill).
   const style = await ctx.ui.select("What style?", [
+    "Editorial illustration",
     "Professional",
     "Playful",
     "Minimal",
@@ -282,13 +311,24 @@ async function handleWizard(pi: ExtensionAPI, ctx: any, providers: MediaProvider
   if (!ok) return;
 
   // Build tool call message — this triggers blocking tool execution
-  // so onUpdate callbacks stream progress back in real-time
-  const styledPrompt = style
-    ? `[Style: ${style}] ${prompt}`
-    : prompt;
+  // so onUpdate callbacks stream progress back in real-time.
+  // For presentation image types we prepend explicit slide-framing cues
+  // so the LLM (in the tool-calling agent) writes a slide-ready prompt.
+  const isPresentation = PRESENTATION_IMAGE_TYPES.has(
+    assetType as (typeof VALID_ASSET_TYPES)[number]
+  );
+  let styleCue = "";
+  if (style === "Editorial illustration") {
+    styleCue = isPresentation
+      ? "Editorial illustration style, slide-ready, 16:9, generous negative space for headline overlay, illustration-led composition. "
+      : "Editorial illustration style. ";
+  } else if (style) {
+    styleCue = `[Style: ${style}] `;
+  }
+  const styledPrompt = `${styleCue}${prompt}`;
   const toolArgs = JSON.stringify({
     prompt: styledPrompt,
-    asset_type: assetType.replace(/\s+/g, "_"),
+    asset_type: assetType,
     target,
     confirm: false,
   }, null, 2);
