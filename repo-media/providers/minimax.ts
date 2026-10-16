@@ -154,11 +154,14 @@ class MiniMaxImageProvider implements ImageProvider {
 
 class MiniMaxSpeechProvider implements SpeechProvider {
   supportedModels(): string[] {
+    // Verified live 2026-10: 2.8/2.6 never existed on api.minimax.io; newest is 2.5 preview.
     return [
-      "speech-2.8-hd",
-      "speech-2.8-turbo",
-      "speech-2.6-hd",
-      "speech-2.6-turbo",
+      "speech-2.5-hd-preview",
+      "speech-2.5-turbo-preview",
+      "speech-02-hd",
+      "speech-02-turbo",
+      "speech-01-hd",
+      "speech-01-turbo",
     ];
   }
 
@@ -214,6 +217,8 @@ class MiniMaxSpeechProvider implements SpeechProvider {
 
 // --- Music Provider ---
 
+// /v1/music_generation answers 2153 "no longer available to new users" — kept for
+// grandfathered keys, not advertised in capabilities below.
 class MiniMaxMusicProvider implements MusicProvider {
   supportedModels(): string[] {
     return ["music-2.6", "music-cover"];
@@ -353,7 +358,7 @@ export function loadProviders(): MediaProvider[] {
   return [
     {
       name: "minimax",
-      capabilities: ["image", "speech", "music", "video"],
+      capabilities: ["image", "speech", "video"],
       image: new MiniMaxImageProvider(),
       speech: new MiniMaxSpeechProvider(),
       music: new MiniMaxMusicProvider(),

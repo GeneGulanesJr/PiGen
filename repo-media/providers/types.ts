@@ -190,7 +190,7 @@ export const ASSET_EXTENSIONS: Record<string, string> = {
 
 export const DEFAULT_MODELS: Record<string, string> = {
   image: "image-01",
-  speech: "speech-2.8-hd",
+  speech: "speech-2.5-hd-preview",
   music: "music-2.6",
   video: "MiniMax-Hailuo-2.3",
 };
